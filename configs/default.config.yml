@@ -1,0 +1,20 @@
+{
+  "owner":{
+    "name": "My name"
+  },
+  "exchange":{
+    "key" : "TEST_COINBASE_KEY",
+    "secret" : "TEST_COINBASE_SECRET",
+    "passphrase" : "TEST_COINBASE_PASSPHRASE"
+  },
+  "trading":{
+    "fees": 0.02,
+    "riskAversion" : 0.95,
+    "buySensitivity" : 0.6,
+    "sellSensitivity" : 0.6
+  },
+  "roi":{
+    "paymentPeriod" : 10,
+    "profitRate" : 0.05
+  }
+}
