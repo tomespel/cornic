@@ -2,11 +2,13 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	ws "github.com/gorilla/websocket"
 	gdax "github.com/preichenberger/go-gdax"
 
+	fin "../pkg/cornic/fin"
 	cornicio "../pkg/cornic/io"
 )
 
@@ -37,26 +39,25 @@ func main() {
 		println(err.Error())
 	}
 
-	//println(len(cfg.Exchange.TradedMarkets))
-	//println(cfg.Exchange.TradedMarkets)
-
 	subscribe := gdax.Message{
 		Type: "subscribe",
 		Channels: []gdax.MessageChannel{
-			gdax.MessageChannel{
-				Name: "level2",
-				ProductIds: []string{
-					//"ETH-BTC",
-					"ETH-BTC",
-				},
-			},
-		},
+			gdax.MessageChannel{Name: "level2", ProductIds: cfg.Trading.TradedAssets}},
 	}
 	if err := wsConn.WriteJSON(subscribe); err != nil {
 		println(err.Error())
 	}
+
+	// Building currency portfolio
+	allCurrencies := make([]*fin.Currency, 0)
+	for _, element := range cfg.Trading.TradedAssets {
+		newCurrency := fin.NewCurrency(element[:3], element[4:])
+		allCurrencies = append(allCurrencies, newCurrency)
+	}
+
 	i := 0
 	message := gdax.Message{}
+
 	for true {
 		if err := wsConn.ReadJSON(&message); err != nil {
 			println(err.Error())
@@ -64,10 +65,21 @@ func main() {
 		}
 
 		i++
-		println(message.Type, message.ProductId, message.Price, i)
+		if i%200 == 0 {
+			println("=======")
+			for _, element := range allCurrencies {
+				println(element.Name, "=", element.ComputeMid(), element.Fiat)
+			}
+		}
+
 		if len(message.Changes) > 0 {
 			if len(message.Changes[0]) > 0 {
-				println(message.Type, message.ProductId, message.Changes[0][1], i)
+				for _, c := range allCurrencies {
+					if (c.Name == message.ProductId[:3]) && (c.Fiat == message.ProductId[4:]) {
+						value, _ := strconv.ParseFloat(message.Changes[0][1], 64)
+						c.Update(message.Changes[0][0], value)
+					}
+				}
 			}
 		}
 

@@ -12,7 +12,11 @@
     "riskAversion" : 0.95,
     "buySensitivity" : 0.6,
     "sellSensitivity" : 0.6,
-    "actionTick" : 1
+    "actionTick" : 1,
+    "tradedAssets": ["BTC-USD"]
+  },
+  "calibration":{
+    "requiredValues": 10
   },
   "roi":{
     "paymentPeriod" : 10,

@@ -26,11 +26,13 @@ func (a *Account) updateAccountTime() int {
 // SetBalance updates Account.Balance
 func (a *Account) SetBalance(newBalance float32) int {
 	a.Balance = newBalance
+	a.updateAccountTime()
 	return 0
 }
 
 // SetAvailable updates Account.Balance
 func (a *Account) SetAvailable(newAvailable float32) int {
 	a.Available = newAvailable
+	a.updateAccountTime()
 	return 0
 }

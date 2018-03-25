@@ -21,6 +21,10 @@ type Config struct {
 		BuySensitivity  float32
 		SellSensitivity float32
 		ActionTick      int
+		TradedAssets    []string
+	}
+	Calibration struct {
+		RequiredValues int
 	}
 	ROI struct {
 		PaymentPeriod int
