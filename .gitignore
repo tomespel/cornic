@@ -14,5 +14,4 @@
 .glide/
 
 # Implementation
-/configs/practice.cfg
-/configs/practice.config.yml
+/configs/practice.config.json

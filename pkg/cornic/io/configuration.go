@@ -8,23 +8,24 @@ import (
 // Config encapsulates config option
 type Config struct {
 	Owner struct {
-		Name string `json: "name"`
-	} `json: "owner"`
+		Name string
+	}
 	Exchange struct {
-		Key        string `json: "key"`
-		Secret     string `json: "secret"`
-		Passphrase string `json: "passphrase"`
-	} `json: "exchange"`
+		Key        string
+		Secret     string
+		Passphrase string
+	}
 	Trading struct {
-		Fees            float32 `json: "fees"`
-		RiskAversion    float32 `json: "roskAversion"`
-		BuySensitivity  float32 `json: "buySensitivity"`
-		SellSensitivity float32 `json: "sellSensivity"`
-	} `json: "trading"`
+		Fees            float32
+		RiskAversion    float32
+		BuySensitivity  float32
+		SellSensitivity float32
+		ActionTick      int
+	}
 	ROI struct {
-		PaymentPeriod int     `json: "paymentPeriod"`
-		ProfitRate    float32 `json: "profitRate"`
-	} `json: "roi"`
+		PaymentPeriod int
+		ProfitRate    float32
+	}
 }
 
 // LoadConfiguration loads configFile

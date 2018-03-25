@@ -11,7 +11,8 @@
     "fees": 0.02,
     "riskAversion" : 0.95,
     "buySensitivity" : 0.6,
-    "sellSensitivity" : 0.6
+    "sellSensitivity" : 0.6,
+    "actionTick" : 1
   },
   "roi":{
     "paymentPeriod" : 10,
