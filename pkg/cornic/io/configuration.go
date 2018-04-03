@@ -22,6 +22,7 @@ type Config struct {
 		SellSensitivity float32
 		ActionTick      int
 		TradedAssets    []string
+		TradedProducts  []string
 	}
 	Calibration struct {
 		RequiredValues int

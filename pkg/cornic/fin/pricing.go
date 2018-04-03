@@ -6,11 +6,11 @@ func TestPricing() bool {
 }
 
 // ComputeCost computes the cost of purchase
-func ComputeCost(cost float32, fees float32, quantity float32) float32 {
+func ComputeCost(cost float64, fees float64, quantity float64) float64 {
 	return cost * (1.0 + fees) * quantity
 }
 
 // ComputeValue computes the value of selling
-func ComputeValue(value float32, fees float32, quantity float32) float32 {
+func ComputeValue(value float64, fees float64, quantity float64) float64 {
 	return value * (1.0 - fees) * quantity
 }

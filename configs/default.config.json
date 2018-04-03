@@ -13,7 +13,8 @@
     "buySensitivity" : 0.6,
     "sellSensitivity" : 0.6,
     "actionTick" : 1,
-    "tradedAssets": ["BTC-USD"]
+    "tradedAssets": ["BTC", "USD"],
+    "tradedProducts": ["BTC-USD"]
   },
   "calibration":{
     "requiredValues": 10

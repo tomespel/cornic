@@ -1,101 +1,63 @@
 package fin
 
-import (
-	"time"
-
-	io "../io"
+import(
+  io "../io"
 )
 
-// Loading congifuration
-var cfg, _ = io.LoadConfiguration("../configs/practice.config.json")
-
-var requiredNumber = cfg.Calibration.RequiredValues
-
-// Currency encaptsulates market data about a currency
-type Currency struct {
-	Name         string
-	Fiat         string
-	BidValue     float64
-	AskPrice     float64
-	LastUpdated  time.Time
-	LastBids     []float64
-	LastAsks     []float64
-	RecordedBids int
-	RecordedAsks int
+// Currency encapsulates market data about a currency
+type Currency struct{
+  Name string
+  Rates []*CurrencyRate
 }
 
 // NewCurrency constructs a Currency
-func NewCurrency(name string, fiat string) *Currency {
-	return &Currency{Name: name, Fiat: fiat, LastBids: make([]float64, requiredNumber), LastAsks: make([]float64, requiredNumber), LastUpdated: time.Now()}
+func NewCurrency(name string) *Currency{
+	return &Currency{Name: name}
 }
 
-// updateCurrencyTime updates the lastUpdated time in the Currency
-func (c *Currency) updateCurrencyTime() int {
-	c.LastUpdated = time.Now()
-	return 0
+// GetRate returns the CurrencyRate object
+func (c Currency) GetRate(name string, fiat string) *CurrencyRate{
+  for _, element := range c.Rates{
+    if (element.Name==name) && (element.Fiat==fiat){
+      return element
+    }
+  }
+  return nil
 }
 
-// SetBid updates Currency.BidValue and Currency.LastBids
-func (c *Currency) SetBid(newBidValue float64) int {
-	c.BidValue = newBidValue
-	//println("LastBidssize:", len(c.LastBids))
-	c.LastBids = c.LastBids[len(c.LastBids)-requiredNumber+1:]
-	c.LastBids = append(c.LastBids, newBidValue)
-	c.updateCurrencyTime()
-	c.RecordedBids++
-	return 0
+// AddRate adds rates in pair for a given currency
+func (c *Currency) AddRate(rateID string) int{
+  c.Rates = append(c.Rates, NewCurrencyRate(rateID[:3], rateID[4:]))
+  c.Rates = append(c.Rates, NewCurrencyRate(rateID[4:], rateID[:3]))
+  return 0
 }
 
-// SetAsk updates Currency.AskPrice and Currency.LastAsks
-func (c *Currency) SetAsk(newAskValue float64) int {
-	c.AskPrice = newAskValue
-	c.LastAsks = c.LastAsks[len(c.LastAsks)-requiredNumber+1:]
-	c.LastAsks = append(c.LastAsks, newAskValue)
-	c.updateCurrencyTime()
-	c.RecordedAsks++
-	return 0
-}
-
-// Update updates currency from the l2update stream
-func (c *Currency) Update(action string, price float64) int {
-	if action == "buy" {
-		c.SetAsk(price)
+// Update updates the rates from the l2update stream
+func (c *Currency) Update(rateID string, action string, price float64) int {
+  if action == "buy" {
+		c.GetRate(rateID[:3], rateID[4:]).SetAsk(price)
+    c.GetRate(rateID[4:], rateID[:3]).SetBid(1/price)
 		return 0
 	}
 	if action == "sell" {
-		c.SetBid(price)
+    c.GetRate(rateID[:3], rateID[4:]).SetBid(price)
+    c.GetRate(rateID[4:], rateID[:3]).SetAsk(1/price)
 		return 0
 	}
-	return 1
+  return 1
 }
 
-// ComputeBid computes bid value as an average
-func (c Currency) ComputeBid() float64 {
-	if c.RecordedBids > requiredNumber {
-		var sum float64
-		sum = 0
-		for _, element := range c.LastBids {
-			sum += element
-		}
-		return sum / float64(len(c.LastBids))
-	}
-	return c.BidValue
-}
-
-// ComputeAsk computes ask price as an average
-func (c Currency) ComputeAsk() float64 {
-	if c.RecordedAsks > requiredNumber {
-		var sum float64
-		sum = 0
-		for _, element := range c.LastAsks {
-			sum += element
-		}
-		return sum / float64(len(c.LastAsks))
-	}
-	return c.AskPrice
-}
-
-// ComputeMid computes mid price as an average
-func (c Currency) ComputeMid() float64 {
-	return (c.ComputeBid() + c.ComputeAsk()) / 2
+// BuildCurrenciesList builds a list with all the currencies
+func BuildCurrenciesList(cfg io.Config) []*Currency{
+  allCurrencies := make([]*Currency, 0)
+  for _, asset := range cfg.Trading.TradedAssets {
+    newCurrency := NewCurrency(asset)
+    for _, product := range cfg.Trading.TradedProducts {
+      if (product[:3] == asset) || (product[4:] == asset) {
+        newCurrency.AddRate(product)
+      }
+    }
+    allCurrencies = append(allCurrencies, newCurrency)
+  }
+  return allCurrencies
 }
