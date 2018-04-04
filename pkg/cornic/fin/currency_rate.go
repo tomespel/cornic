@@ -38,7 +38,6 @@ func (c *CurrencyRate) updateCurrencyRateTime() int {
 // SetBid updates CurrencyRate.BidValue and CurrencyRate.LastBids
 func (c *CurrencyRate) SetBid(newBidValue float64) int {
 	c.BidValue = newBidValue
-	//println("LastBidssize:", len(c.LastBids))
 	c.LastBids = c.LastBids[len(c.LastBids)-requiredNumber+1:]
 	c.LastBids = append(c.LastBids, newBidValue)
 	c.updateCurrencyRateTime()
@@ -98,4 +97,36 @@ func (c CurrencyRate) ComputeAsk() float64 {
 // ComputeMid computes mid price as an average
 func (c CurrencyRate) ComputeMid() float64 {
 	return (c.ComputeBid() + c.ComputeAsk()) / 2
+}
+
+// BidIncrease tells if there was a Bid value increase
+func (c CurrencyRate) BidIncrease() bool {
+	if c.LastBids[requiredNumber-2] < c.LastBids[requiredNumber-1] && c.LastBids[requiredNumber-2] != 0 {
+		return true
+	}
+	return false
+}
+
+// BidDecrease tells if there was a Bid value decrease
+func (c CurrencyRate) BidDecrease() bool {
+	if c.LastBids[requiredNumber-2] != 0 {
+		return !c.BidIncrease()
+	}
+	return false
+}
+
+// AskIncrease tells if there was an Ask value increase
+func (c CurrencyRate) AskIncrease() bool {
+	if c.LastAsks[requiredNumber-2] < c.LastAsks[requiredNumber-1] && c.LastAsks[requiredNumber-2] != 0 {
+		return true
+	}
+	return false
+}
+
+// AskDecrease tells if there was an Ask value decrease
+func (c CurrencyRate) AskDecrease() bool {
+	if c.LastAsks[requiredNumber-2] != 0 {
+		return !c.AskIncrease()
+	}
+	return false
 }

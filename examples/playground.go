@@ -58,13 +58,13 @@ func main() {
 	i := 0
 	message := gdax.Message{}
 
-	secureThreshold := float64(0.0)
+	//secureThreshold := float64(0.0)
 	action := true
-	lastOrderID := ""
 	triggerLevel := 1
 	triggerAccountsSync := 20
-	minimumInvestmentRequirement := float64(15)
-	fee := float64(0.0)
+	minimumInvestmentRequirement := float64(8)
+
+	//fee := float64(0.0)
 
 	buyPrice := float64(0.0)
 	sellValue := float64(0.0)
@@ -82,21 +82,23 @@ func main() {
 			}
 		}
 
+		currentTradedRate := allCurrencies[1].Rates[0]
+
 		// Show Update
 		if message.ProductId[:3] == "ETH" {
-			println(allCurrencies[1].Name, ":", allCurrencies[1].Rates[0].Name, "=", allCurrencies[1].Rates[0].ComputeMid(), allCurrencies[1].Rates[0].Fiat)
+			println(allCurrencies[1].Name, ":", currentTradedRate.Name, "=", (currentTradedRate.BidValue+currentTradedRate.AskPrice)/2, currentTradedRate.Fiat)
 		}
 
 		// Trigger sale
 
 		if i%triggerLevel == 0 && i > triggerLevel && message.ProductId[:3] == "ETH" {
 
-			if lastValue > allCurrencies[1].Rates[0].BidValue || lastValue < allCurrencies[1].Rates[0].AskPrice {
-				if lastValue < allCurrencies[1].Rates[0].AskPrice && lastExecution < allCurrencies[1].Rates[0].AskPrice*(1-fee) {
+			if currentTradedRate.BidIncrease() || currentTradedRate.AskIncrease() || currentTradedRate.BidDecrease() || currentTradedRate.AskDecrease() {
+				if currentTradedRate.AskIncrease() || currentTradedRate.BidIncrease() {
 					action = true
 					println(">>", "Increase", action)
 				}
-				if lastValue > allCurrencies[1].Rates[0].BidValue && lastExecution > allCurrencies[1].Rates[0].BidValue*(1+fee) {
+				if currentTradedRate.AskDecrease() || currentTradedRate.BidDecrease() {
 					action = true
 					println(">>", "Decrease", action)
 				}
@@ -104,20 +106,30 @@ func main() {
 				action = false
 			}
 
-			if lastValue/allCurrencies[1].Rates[0].ComputeMid() < 1-secureThreshold || lastValue/allCurrencies[1].Rates[0].ComputeMid() > 1+secureThreshold {
-			} else {
+			if true {
 
 				// EURO ACCOUNT
 
-				buyPrice = Round(allCurrencies[1].Rates[0].BidValue-0.01, 0.01)
+				buyPrice = currentTradedRate.BidValue
 
 				for _, order := range allOrders {
 					if order.Price != buyPrice && order.Side == "buy" {
 						err := client.CancelOrder(order.ID)
 						if err != nil {
 							println("Updated order:", err.Error())
+							if err.Error() == "order not found" {
+								delete(allOrders, order.ID)
+							}
+							if err.Error() == "Order already done" {
+								allAccounts["ETH"].SetAvailable(allAccounts["ETH"].Available + 0.01)
+								delete(allOrders, order.ID)
+							}
 						} else {
 							println("Updated order:", "Cancelled", order.Side, "order", order.ID)
+
+							delete(allOrders, order.ID)
+
+							allAccounts["EUR"].SetAvailable(allAccounts["EUR"].Available + order.Price*0.01)
 						}
 					}
 				}
@@ -138,25 +150,40 @@ func main() {
 						println(err.Error())
 						println("Attempted to buy at", buyPrice)
 					} else {
-						println("Order:", "buy at", lastExecution, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
-						allAccounts["EUR"].SetAvailable(allAccounts["EUR"].Available - lastExecution*0.01)
+						println("Order:", "buy at", buyPrice, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
+
+						allAccounts["EUR"].SetAvailable(allAccounts["EUR"].Available - buyPrice*0.01)
+
+						activeOrdersList = append(activeOrdersList, savedOrder.Id)
+						allOrders[savedOrder.Id] = fin.NewOrder(savedOrder.Id, savedOrder.Size, savedOrder.Side, savedOrder.ProductId, savedOrder.Price, savedOrder.PostOnly)
+
 						println("Available balance:", allAccounts["EUR"].Available, allAccounts["EUR"].Currency.Name)
-						activeOrdersList = append(activeOrdersList, lastOrderID)
 					}
 
 				}
 
 				// ETHEREUM
 
-				sellValue = Round(allCurrencies[1].Rates[0].AskPrice+0.01, 0.01)
+				sellValue = currentTradedRate.AskPrice
 
 				for _, order := range allOrders {
 					if order.Price != buyPrice && order.Side == "sell" {
 						err := client.CancelOrder(order.ID)
 						if err != nil {
 							println("Updated order:", err.Error())
+							if err.Error() == "order not found" {
+								delete(allOrders, order.ID)
+							}
+							if err.Error() == "Order already done" {
+								allAccounts["EUR"].SetAvailable(allAccounts["EUR"].Available + order.Price*0.01)
+								delete(allOrders, order.ID)
+							}
 						} else {
 							println("Updated order:", "Cancelled", order.Side, "order", order.ID)
+
+							delete(allOrders, order.ID)
+
+							allAccounts["ETH"].SetAvailable(allAccounts["ETH"].Available + 0.01)
 						}
 					}
 				}
@@ -165,7 +192,6 @@ func main() {
 
 					println("- -", "sellValue", sellValue)
 
-					lastExecutionType = "sell"
 					order := gdax.Order{
 						Price:     sellValue,
 						Size:      0.01,
@@ -178,8 +204,11 @@ func main() {
 						println(err.Error())
 						println("Attempted to sell at", sellValue)
 					} else {
-						println("Order:", "sell at", lastExecution, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
-						activeOrdersList = append(activeOrdersList, lastOrderID)
+						println("Order:", "sell at", sellValue, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
+
+						activeOrdersList = append(activeOrdersList, savedOrder.Id)
+						allOrders[savedOrder.Id] = fin.NewOrder(savedOrder.Id, savedOrder.Size, savedOrder.Side, savedOrder.ProductId, savedOrder.Price, savedOrder.PostOnly)
+
 						allAccounts["ETH"].SetAvailable(allAccounts["ETH"].Available - 0.01)
 						println("Available balance:", allAccounts["ETH"].Available, allAccounts["ETH"].Currency.Name)
 					}
@@ -187,13 +216,13 @@ func main() {
 				}
 
 			}
-			//println(" ")
-			lastValue = allCurrencies[1].Rates[0].ComputeMid()
+
 		}
 
 		if i%triggerAccountsSync == 0 || i == 0 {
 
-			println("Synchronizing accounts.")
+			println(" ")
+			println("==== Accounts ====")
 
 			accounts, err := client.GetAccounts()
 			allAccounts = fin.BuildAccountsList(allCurrencies, accounts)
@@ -201,23 +230,26 @@ func main() {
 				println(err.Error())
 			}
 
-			println(" ")
 			for _, account := range allAccounts {
 				println(account.Name, "(", account.ID, "):", account.Available, account.Currency.Name)
 			}
-			println(" ")
 
-			println("Synchronizing orders.")
+			println(" ")
+			println("==== Orders ====")
 
 			orders := make([]gdax.Order, 0)
+			tempActiveOrdersList := make([]string, 0)
 			for _, orderID := range activeOrdersList {
 				newOrder, err := client.GetOrder(orderID)
 				if err == nil {
+					println("Analysing order", newOrder.Id, newOrder.Side, newOrder.Status)
 					if newOrder.Status == "open" {
 						orders = append(orders, newOrder)
+						tempActiveOrdersList = append(tempActiveOrdersList, newOrder.Id)
 					}
 				}
 			}
+			activeOrdersList = tempActiveOrdersList
 
 			allOrders = fin.BuildOrdersList(orders)
 			if err != nil {
