@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"net/http"
 	"time"
 
@@ -12,17 +11,13 @@ import (
 	cornicio "../pkg/cornic/io"
 )
 
-func Round(x, unit float64) float64 {
-	return math.Round(x/unit) * unit
-}
-
 func main() {
 	//fmt.Println("Hello")
 	//fmt.Println(cornic.TestStrategy())
 
 	cfg, err := cornicio.LoadConfiguration("../configs/practice.config.json")
 	if err != nil {
-		println(err.Error())
+		println(time.Now().String(), err.Error())
 	}
 
 	client := gdax.NewClient(cfg.Exchange.Secret, cfg.Exchange.Key, cfg.Exchange.Passphrase)
@@ -34,7 +29,7 @@ func main() {
 	accounts, err := client.GetAccounts()
 	allAccounts := fin.BuildAccountsList(allCurrencies, accounts)
 	if err != nil {
-		println(err.Error())
+		println(time.Now().String(), err.Error())
 	}
 
 	allOrders := make(map[string]*fin.Order)
@@ -43,7 +38,7 @@ func main() {
 	var wsDialer ws.Dialer
 	wsConn, _, err := wsDialer.Dial("wss://ws-feed.gdax.com", nil)
 	if err != nil {
-		println(err.Error())
+		println(time.Now().String(), err.Error())
 	}
 
 	subscribe := gdax.Message{
@@ -52,7 +47,7 @@ func main() {
 			gdax.MessageChannel{Name: "ticker", ProductIds: cfg.Trading.TradedProducts}},
 	}
 	if err := wsConn.WriteJSON(subscribe); err != nil {
-		println(err.Error())
+		println(time.Now().String(), err.Error())
 	}
 
 	i := 0
@@ -71,7 +66,7 @@ func main() {
 
 	for true {
 		if err := wsConn.ReadJSON(&message); err != nil {
-			println(err.Error())
+			println(time.Now().String(), err.Error())
 			break
 		}
 
@@ -86,7 +81,7 @@ func main() {
 
 		// Show Update
 		if message.ProductId[:3] == "ETH" {
-			println(allCurrencies[1].Name, ":", currentTradedRate.Name, "=", (currentTradedRate.BidValue+currentTradedRate.AskPrice)/2, currentTradedRate.Fiat)
+			println(time.Now().String(), allCurrencies[1].Name, ":", currentTradedRate.Name, "=", (currentTradedRate.BidValue+currentTradedRate.AskPrice)/2, currentTradedRate.Fiat)
 		}
 
 		// Trigger sale
@@ -96,11 +91,11 @@ func main() {
 			if currentTradedRate.BidIncrease() || currentTradedRate.AskIncrease() || currentTradedRate.BidDecrease() || currentTradedRate.AskDecrease() {
 				if currentTradedRate.AskIncrease() || currentTradedRate.BidIncrease() {
 					action = true
-					println(">>", "Increase", action)
+					println(time.Now().String(), ">>", "Increase", action)
 				}
 				if currentTradedRate.AskDecrease() || currentTradedRate.BidDecrease() {
 					action = true
-					println(">>", "Decrease", action)
+					println(time.Now().String(), ">>", "Decrease", action)
 				}
 			} else {
 				action = false
@@ -116,7 +111,7 @@ func main() {
 					if order.Price != buyPrice && order.Side == "buy" {
 						err := client.CancelOrder(order.ID)
 						if err != nil {
-							println("Updated order:", err.Error())
+							println(time.Now().String(), "Updated order:", err.Error())
 							if err.Error() == "order not found" {
 								delete(allOrders, order.ID)
 							}
@@ -125,7 +120,7 @@ func main() {
 								delete(allOrders, order.ID)
 							}
 						} else {
-							println("Updated order:", "Cancelled", order.Side, "order", order.ID)
+							println(time.Now().String(), "Updated order:", "Cancelled", order.Side, "order", order.ID)
 
 							delete(allOrders, order.ID)
 
@@ -136,7 +131,7 @@ func main() {
 
 				if allAccounts["EUR"].Available > minimumInvestmentRequirement && action == true {
 
-					println("- -", "buyPrice", buyPrice)
+					println(time.Now().String(), "- -", "buyPrice", buyPrice)
 
 					order := gdax.Order{
 						Price:     buyPrice,
@@ -147,17 +142,17 @@ func main() {
 					}
 					savedOrder, err := client.CreateOrder(&order)
 					if err != nil {
-						println(err.Error())
-						println("Attempted to buy at", buyPrice)
+						println(time.Now().String(), err.Error())
+						println(time.Now().String(), "Attempted to buy at", buyPrice)
 					} else {
-						println("Order:", "buy at", buyPrice, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
+						println(time.Now().String(), "Order:", "buy at", buyPrice, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
 
 						allAccounts["EUR"].SetAvailable(allAccounts["EUR"].Available - buyPrice*0.01)
 
 						activeOrdersList = append(activeOrdersList, savedOrder.Id)
 						allOrders[savedOrder.Id] = fin.NewOrder(savedOrder.Id, savedOrder.Size, savedOrder.Side, savedOrder.ProductId, savedOrder.Price, savedOrder.PostOnly)
 
-						println("Available balance:", allAccounts["EUR"].Available, allAccounts["EUR"].Currency.Name)
+						println(time.Now().String(), "Available balance:", allAccounts["EUR"].Available, allAccounts["EUR"].Currency.Name)
 					}
 
 				}
@@ -170,7 +165,7 @@ func main() {
 					if order.Price != buyPrice && order.Side == "sell" {
 						err := client.CancelOrder(order.ID)
 						if err != nil {
-							println("Updated order:", err.Error())
+							println(time.Now().String(), "Updated order:", err.Error())
 							if err.Error() == "order not found" {
 								delete(allOrders, order.ID)
 							}
@@ -179,7 +174,7 @@ func main() {
 								delete(allOrders, order.ID)
 							}
 						} else {
-							println("Updated order:", "Cancelled", order.Side, "order", order.ID)
+							println(time.Now().String(), "Updated order:", "Cancelled", order.Side, "order", order.ID)
 
 							delete(allOrders, order.ID)
 
@@ -190,7 +185,7 @@ func main() {
 
 				if allAccounts["ETH"].Available > 0 && action == true {
 
-					println("- -", "sellValue", sellValue)
+					println(time.Now().String(), "- -", "sellValue", sellValue)
 
 					order := gdax.Order{
 						Price:     sellValue,
@@ -201,16 +196,16 @@ func main() {
 					}
 					savedOrder, err := client.CreateOrder(&order)
 					if err != nil {
-						println(err.Error())
-						println("Attempted to sell at", sellValue)
+						println(time.Now().String(), err.Error())
+						println(time.Now().String(), "Attempted to sell at", sellValue)
 					} else {
-						println("Order:", "sell at", sellValue, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
+						println(time.Now().String(), "Order:", "sell at", sellValue, "- PostOnly:", savedOrder.PostOnly, "- ID:", savedOrder.Id)
 
 						activeOrdersList = append(activeOrdersList, savedOrder.Id)
 						allOrders[savedOrder.Id] = fin.NewOrder(savedOrder.Id, savedOrder.Size, savedOrder.Side, savedOrder.ProductId, savedOrder.Price, savedOrder.PostOnly)
 
 						allAccounts["ETH"].SetAvailable(allAccounts["ETH"].Available - 0.01)
-						println("Available balance:", allAccounts["ETH"].Available, allAccounts["ETH"].Currency.Name)
+						println(time.Now().String(), "Available balance:", allAccounts["ETH"].Available, allAccounts["ETH"].Currency.Name)
 					}
 
 				}
@@ -227,11 +222,11 @@ func main() {
 			accounts, err := client.GetAccounts()
 			allAccounts = fin.BuildAccountsList(allCurrencies, accounts)
 			if err != nil {
-				println(err.Error())
+				println(time.Now().String(), err.Error())
 			}
 
 			for _, account := range allAccounts {
-				println(account.Name, "(", account.ID, "):", account.Available, account.Currency.Name)
+				println(time.Now().String(), account.Name, "(", account.ID, "):", account.Available, account.Currency.Name)
 			}
 
 			println(" ")
@@ -242,7 +237,7 @@ func main() {
 			for _, orderID := range activeOrdersList {
 				newOrder, err := client.GetOrder(orderID)
 				if err == nil {
-					println("Analysing order", newOrder.Id, newOrder.Side, newOrder.Status)
+					println(time.Now().String(), "Analysing order", newOrder.Id, newOrder.Side, newOrder.Status)
 					if newOrder.Status == "open" {
 						orders = append(orders, newOrder)
 						tempActiveOrdersList = append(tempActiveOrdersList, newOrder.Id)
@@ -253,19 +248,19 @@ func main() {
 
 			allOrders = fin.BuildOrdersList(orders)
 			if err != nil {
-				println(err.Error())
+				println(time.Now().String(), err.Error())
 			}
 
 			println(" ")
 			for _, order := range allOrders {
-				println(order.Side, order.Size, order.ProductID[:3], "at", order.Price, order.ProductID[4:], "(", order.ID, "- postOnly:", order.PostOnly, ")")
+				println(time.Now().String(), order.Side, order.Size, order.ProductID[:3], "at", order.Price, order.ProductID[4:], "(", order.ID, "- postOnly:", order.PostOnly, ")")
 			}
 			println(" ")
 
 		}
 
 		if message.Type == "snapshot" {
-			println("Snapshot")
+			println(time.Now().String(), "Snapshot")
 			println(" ")
 		}
 
